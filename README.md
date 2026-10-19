@@ -9,7 +9,7 @@ It works for:
 
 Extra tracks are recording-only. To have a source in your live stream too, also tick its Track 1 (OBS's stream track by default) in Advanced Audio Properties. If you use OBS's Twitch VOD track, it works the same way. It doesn't add video encoders or re-encode video. Optionally, it also saves each extra track as an MP3 backup.
 
-- **Shared as is:** I built this for my own streams and I'm sharing it in case it helps others. It's tested on one setup (portable OBS 32.2.2 with Aitum Vertical 1.6.6), and I can't offer much support. If anything fails, your original recording is kept; for streams that matter, turn on MP3 backups and check your first few recordings.
+- **Shared as is:** I built this for my own streams and I'm sharing it in case it helps others. It's tested on one setup (portable OBS 32.2.2 with Aitum Vertical 1.6.6), and support is limited. If anything fails, your original recording is kept; for streams that matter, turn on MP3 backups and check your first few recordings.
 - **Source code:** the plugin is free software under GPL-2.0-or-later. Its source and build scripts are published with each release.
 
 ## Contents
