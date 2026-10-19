@@ -9,6 +9,7 @@ It works for:
 
 Extra tracks are recording-only. To have a source in your live stream too, also tick its Track 1 (OBS's stream track by default) in Advanced Audio Properties. If you use OBS's Twitch VOD track, it works the same way. It doesn't add video encoders or re-encode video. Optionally, it also saves each extra track as an MP3 backup.
 
+- **Shared as is:** I built this for my own streams and I'm sharing it in case it helps others. It's tested on one setup (portable OBS 32.2.2 with Aitum Vertical 1.6.6), and I can't offer much support. If anything fails, your original recording is kept; for streams that matter, turn on MP3 backups and check your first few recordings.
 - **Source code:** the plugin is free software under GPL-2.0-or-later. Its source and build scripts are published with each release.
 
 ## Contents
@@ -63,8 +64,6 @@ The helper `.exe` isn't code-signed, so Windows SmartScreen or antivirus may war
 Close OBS and extract the earlier version's ZIP the same way. Every version reads the same saved settings.
 
 Before going back, let any recording or clip finish embedding: wait until no `.extra-audio-job.json` file is left next to your videos. An older version can't finish a job file written by a newer one.
-
-Since 0.11.11 the plugin no longer saves two old, unused values per track. An older version adds them back the first time it starts; nothing else changes.
 
 ### Uninstall
 
@@ -239,7 +238,7 @@ These avoid every known problem. None of them risks your native recording; at wo
 - **Audio already mixed together can't be separated.** For example, if music plays through Desktop audio, an extra Music track can't remove it from Desktop. Isolate sources upstream.
 - **Browser sources** need OBS's "Control audio via OBS" on to appear in an extra track. Status names any that don't.
 - **Sources missing from the current scene collection record silence**, and Status shows how many are missing. A recording that continues across a collection switch records silence on those tracks from the switch.
-- **A late start is possible in one case.** The first Aitum recording in an OBS session that starts on its own (not together with the main recording) can start capture up to about 100 ms late; the log says how much. When Aitum starts with main, which is your setup, this doesn't happen.
+- **A late start is possible in one case.** The first Aitum recording in an OBS session that starts on its own (not together with the main recording) can start capture up to about 100 ms late; the log says how much. When Aitum starts together with the main recording, this doesn't happen.
 - **Not yet validated:**
   - multi-hour sessions;
   - importing into your editor;
@@ -257,8 +256,8 @@ Measured on the development setup.
 | After first use | About 15 MB, 210 handles and 4 threads stay in use, because the extra-track encoders stay loaded for reuse. |
 | Per recording after that | About 5 MB growth, the same as OBS on its own (OBS's CoreAudio encoders cause it). |
 | While running | Audio history of about 4 MiB per enabled extra track (28 MiB for 7). Replay audio in RAM: about 29 MB per canvas for 7 tracks at 160 kbps with a 180-second replay. Compressed replay audio is capped at 256 MiB in total; past that, replay clips keep only their native tracks and the log says so, while recordings keep their extra tracks. |
-| CPU, recording with both replays running | 58% of one core with the plugin, 36% without it, with four main and three vertical extra tracks (77% before 0.11.8 shared the encoders). |
-| Encoders | One per enabled track and canvas: 7 main and 6 vertical tracks use 13 extra AAC encoders with everything running (26 before 0.11.8). |
+| CPU, recording with both replays running | 58% of one core with the plugin, 36% without it, with four main and three vertical extra tracks. |
+| Encoders | One per enabled track and canvas: 7 main and 6 vertical tracks use 13 extra AAC encoders with everything running. |
 | Disk | About 72 MB per hour per track at 160 kbps, inside the recording. 13 extra streams (7 main, 6 vertical) come to about 936 MB/hour. MP3 backups, if on, add about 72 MB/hour per track per canvas. |
 
 ## Troubleshooting and recovery
