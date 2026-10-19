@@ -182,8 +182,6 @@ With **Save each enabled extra track as MP3** on (Backup tab):
 
 With the default pattern, `2026-10-15_MASTER_07-00-00.mp4` gives `2026-10-15_MASTER_07-00-00_Track 7 - Microphone.mp3`. The recording comes first, so each session's files sort together. A track with no name gives `2026-10-15_MASTER_07-00-00_Track 7.mp3`: the ` - ` next to an empty name is left out. The Backup tab shows an example built the same way as the real files, so you can see the effect of a pattern before you save it.
 
-A profile that saved the older default, `Track {track} - {name}_{recording}`, keeps it. To switch to the new default, clear the field and click OK.
-
 **How files are named and written**:
 
 - Existing files are never overwritten; a clash gets ` (2)`.
