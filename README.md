@@ -7,7 +7,7 @@ It works for:
 - main OBS recordings and **OBS Replay Buffer** clips;
 - **Aitum Vertical** recordings and **Backtrack** clips.
 
-Extra tracks are recording-only: they're never streamed or sent to the Twitch VOD track. What viewers hear and what reaches the VOD is still set by OBS's own Track 1–6 tickboxes, which the plugin never changes, so a source ticked on Track 1 is streamed whether or not it's also in an extra track. It doesn't add video encoders or re-encode video. Optionally, it also saves each extra track as an MP3 backup.
+Extra tracks are recording-only. To have a source in your live stream too, also tick its Track 1 (OBS's stream track by default) in Advanced Audio Properties. If you use OBS's Twitch VOD track, it works the same way. It doesn't add video encoders or re-encode video. Optionally, it also saves each extra track as an MP3 backup.
 
 - **Source code:** the plugin is free software under GPL-2.0-or-later. Its source and build scripts are published with each release.
 
@@ -84,16 +84,16 @@ Your extra-track settings stay in the OBS profile (the `[ExtraAudio]` section of
    - choose its **Audio Bitrate** (new tracks default to 160 kbps);
    - give it a **Name**, which shows as the stream's title in the MP4 (a blank name is labelled "Track 7", and so on);
    - choose where to embed it: **Main recordings / clips**, **Vertical recordings / clips**, or both.
-4. Click **Apply and open Advanced Audio Properties**. Each enabled extra track has a column beside native Tracks 1–6. Tick the sources that belong in each extra track. These ticks save immediately. They're separate from Tracks 1–6: ticking a source for Track 7 doesn't add it to the stream or remove it from the stream.
+4. Click **Apply and open Advanced Audio Properties**. Each enabled extra track has a column beside native Tracks 1–6. Tick the sources that belong in each extra track. These ticks save immediately. Extra tracks are recording-only: to hear a source on stream as well, also tick its Track 1 (OBS's stream track by default).
 5. Keep at least one native Track 1–6 ticked for every source you use in an extra track. OBS only processes a source's audio (filters, volume, sync offset) when it's on a native track.
 6. Click **OK** in the panel to save; **Cancel** throws away the panel's unsaved edits.
 
-Live and VOD audio stay on native tracks:
+Live and VOD audio come from native tracks only:
 
-- What's heard live is native **Track 1**.
-- What goes to the Twitch VOD track is whichever native slot you chose in **Settings > Output > Streaming**.
+- What's heard live is native **Track 1** (OBS's stream track by default; it's the **Audio Track** setting under **Settings > Output > Streaming**).
+- If you use OBS's Twitch VOD track, the VOD gets whichever native track you chose there. Otherwise it gets the same audio as the stream.
 
-Assign sources to those with the native checkboxes in Advanced Audio Properties. Extra tracks are recording-only.
+Assign sources to those with the native checkboxes in Advanced Audio Properties. A source can be on a native track and an extra track at the same time.
 
 ## Settings reference
 
