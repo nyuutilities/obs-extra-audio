@@ -1,0 +1,12 @@
+{
+  "display_name": "OBS Extra Audio",
+  "id": "obs-extra-audio",
+  "version": "0.11.14",
+  "os_arch": "windows-x64",
+  "name": "obs-extra-audio",
+  "description": "Extra audio tracks in OBS/Aitum recordings and Replay Buffer/Backtrack clips, with optional MP3 contingency.",
+  "long_description": "Configure Tracks 7-16 and embed them in original main/Aitum MP4 recordings and replay clips. Extra audio follows each canvas's exact native recording and replay pause/resume boundaries. Existing video encoders and native pause behavior are preserved; no additional video encoders are created. Extra tracks use the selected main OBS AAC encoder. Source assignments and native live/VOD slots stay user-controlled. Optional full-recording MP3 backups follow each canvas's own start, stop and pauses, with configurable names under Recording Path/Extra Audio/Main or Vertical.",
+  "urls": {},
+  "has_banner": false,
+  "has_icon": false
+}
