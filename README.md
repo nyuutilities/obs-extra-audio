@@ -239,12 +239,6 @@ These avoid every known problem. None of them risks your native recording; at wo
 - **Browser sources** need OBS's "Control audio via OBS" on to appear in an extra track. Status names any that don't.
 - **Sources missing from the current scene collection record silence**, and Status shows how many are missing. A recording that continues across a collection switch records silence on those tracks from the switch.
 - **A late start is possible in one case.** The first Aitum recording in an OBS session that starts on its own (not together with the main recording) can start capture up to about 100 ms late; the log says how much. When Aitum starts together with the main recording, this doesn't happen.
-- **Not yet validated:**
-  - multi-hour sessions;
-  - importing into your editor;
-  - Twitch's published VODs and clips;
-  - recovery after a power cut;
-  - OBS versions other than 32.2.2, and Aitum versions other than 1.6.6.
 
 ## Resource use
 
@@ -293,6 +287,8 @@ That restores the original MP4 if needed and retries. To only restore the origin
 - Check that OBS is 32.2.2 or newer; the log says if it refused to load.
 - After an OBS update, the OBS log may say the plugin failed to load. That means the update brought a new FFmpeg or Qt, and the plugin needs a version built for that OBS.
 - Restart OBS after any change.
+
+**Your editor doesn't show all the tracks**: use the MP3 backups (turn on **Save each enabled extra track as MP3** in the Backup tab before recording). Each MP3 lines up with its own recording when placed at the start of the timeline.
 
 **Something looks wrong after an update**: go back to the previous version (see [Go back to an earlier version](#go-back-to-an-earlier-version)), then compare.
 
