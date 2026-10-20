@@ -6,7 +6,9 @@
 extern "C" {
 #endif
 char *ea_ui_snapshot(void);
-struct ea_ui_roles { unsigned live, vod; char encoder[128]; };
+// vod_used: OBS's Twitch VOD track option is on and names a track other than the stream's;
+// otherwise VODs get the stream's audio.
+struct ea_ui_roles { unsigned live, vod; bool vod_used; char encoder[128]; };
 bool ea_ui_read_roles(struct ea_ui_roles *roles);
 // The recorder's current status, as written to the OBS log, and whether outputs are active.
 void ea_ui_status(char *text, size_t size, bool *busy);

@@ -176,8 +176,10 @@ static DWORD WINAPI export_clip(void *data)
     }
     if(r.config.backup_mp3) {
         char backup[8192];snprintf(backup,sizeof(backup),"%s.extra-audio-backup.m4a",clip->native);
+        // Each clip output has its own folder beside the recordings' Main and Vertical.
+        char directory[8300]="";if(*r.backup_directory)snprintf(directory,sizeof(directory),"%s/%s",r.backup_directory,clip->vertical?"Vertical Backtrack":"Replay Buffer");
         bool saved=!os_file_exists(backup) && ea_aac_replay_export(audio,backup,clip->vertical,true,start,frames) &&
-            ea_mp3_from_aac(backup,r.backup_directory,r.config.backup_format,clip->native,rate,r.config.tracks,r.config.track_count,frames);
+            ea_mp3_from_aac(backup,directory,r.config.backup_format,clip->native,rate,r.config.tracks,r.config.track_count,frames);
         if(saved) {wchar_t path[8192];MultiByteToWideChar(CP_UTF8,0,backup,-1,path,8192);DeleteFileW(path);}
         else {clip->backup_failed=true;blog(LOG_ERROR,"[extra-audio] Replay MP3 backup failed; native clip and any encoded recovery audio retained: %s",clip->native);}
     }

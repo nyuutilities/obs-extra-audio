@@ -41,6 +41,7 @@ bool ea_ui_read_roles(struct ea_ui_roles *roles)
 	if (!roles->live) roles->live = 1;
 	roles->vod = (unsigned)config_get_uint(profile, "AdvOut", "VodTrackIndex");
 	if (!roles->vod) roles->vod = roles->live == 2 ? 1 : 2;
+	roles->vod_used = config_get_bool(profile, "AdvOut", "VodTrackEnabled") && roles->vod != roles->live;
 	char id[128];ea_record_audio_encoder(profile,id,sizeof(id));const char *name=obs_encoder_get_display_name(id);
 	snprintf(roles->encoder,sizeof(roles->encoder),"%s",name?name:id);
 	return true;
@@ -70,7 +71,7 @@ char *ea_ui_snapshot(void)
 	obs_data_set_string(data, "profile", path ? path : ""); obs_data_set_string(data, "collection", collection ? collection : "");
 	bfree(path); bfree(collection);
 	struct ea_ui_roles roles; ea_ui_read_roles(&roles);
-	obs_data_set_int(data, "live", roles.live); obs_data_set_int(data, "vod", roles.vod);
+	obs_data_set_int(data, "live", roles.live); obs_data_set_int(data, "vod", roles.vod); obs_data_set_bool(data, "vod_used", roles.vod_used);
 	obs_data_set_bool(data, "busy", ea_outputs_busy());
 	obs_data_set_string(data,"encoder",roles.encoder);
 	unsigned bitrates[EA_MAX_BITRATES]; size_t offered = encoder_bitrates(profile, bitrates);

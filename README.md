@@ -1,4 +1,4 @@
-# OBS Extra Audio 0.11.14
+# OBS Extra Audio 0.11.15
 
 OBS Extra Audio adds up to ten extra audio tracks, numbered **7–16**, to your OBS recordings and replay clips. Each extra track is its own mix of the sources you choose (for example only your microphone, or only Discord). It's saved as a separate, named stereo AAC stream inside the original MP4, so an editor can mute or process each one on its own.
 
@@ -103,7 +103,7 @@ Assign sources to those with the native checkboxes in Advanced Audio Properties.
 |---|---|---|
 | **Extra tracks** 7–16 | top row, above the tabs | Turns each extra track on or off. A disabled track keeps its name, bitrate, destinations and source ticks, and track numbers never shift. A new profile starts with none enabled. |
 | Recording audio encoder | Tracks tab (information) | The encoder OBS uses for main recording audio (e.g. CoreAudio AAC). Extra tracks always use this encoder, each at its own bitrate. Change it in OBS Settings. |
-| Streaming / VOD mix | Tracks tab (information) | Which native tracks are your live and VOD audio, read from OBS Settings. |
+| Streaming / Twitch VOD track | Tracks tab (information) | Which native track is your live audio, and which one your Twitch VOD gets, read from OBS Settings. It says "off" when OBS's Twitch VOD track option is off; VODs then get the stream's audio. |
 | **Audio Bitrate** | Tracks tab, per track | AAC bitrate for this track. The list is exactly what your encoder offers at OBS's sample rate; CoreAudio at 48 kHz offers 17 values from 32 to 320 kbps. A saved value the encoder doesn't offer shows "(not offered by this encoder)" and must be changed before saving. CoreAudio uses HE-AAC at its lowest bitrates; the plugin measures and corrects HE-AAC's extra delay. |
 | **Name** | Tracks tab, per track | The stream title in the MP4, and the `{name}` in MP3 filenames. Optional. |
 | **Main recordings / clips** | Tracks tab, per track | Embed this track in main OBS recordings and Replay Buffer clips. |
@@ -135,8 +135,8 @@ Settings are stored in the OBS profile (the `[ExtraAudio]` section of `basic.ini
 **After Stop**:
 
 - The helper appends the extra streams and a new index **directly to the original MP4**. The filename stays the same, there's no second copy of the video, and video and native audio are untouched.
-- A small `.extra-audio-job.json` checkpoint exists until it finishes. Both side files then disappear; this took under 2 seconds in testing.
-- The Status box then says "Complete: extra tracks are embedded in the original recording MP4."
+- A small `.extra-audio-job.json` checkpoint exists until it finishes. Both side files then disappear; this took under 2 seconds for short test recordings, and about 20 seconds for a 3-hour main and vertical recording together.
+- The Status box then lists each finished recording, for example "Main OBS: Complete: extra tracks are embedded in the original recording MP4." and the same for "Aitum" when a vertical recording finishes too.
 
 **Pausing**:
 
@@ -152,7 +152,7 @@ Settings are stored in the OBS profile (the `[ExtraAudio]` section of `basic.ini
 
 **Shared encoders**:
 
-- A recording and the replay output on the same native encoder share one set of extra-track encoders. With your 7 main and 6 vertical tracks, everything running at once uses 13 extra AAC encoders.
+- A recording and the replay output on the same native encoder share one set of extra-track encoders. For example, 7 main and 6 vertical tracks with everything running at once use 13 extra AAC encoders.
 - The set stays loaded between recordings.
 - It's released when you change extra-track or encoder settings, switch profile, or exit OBS.
 
@@ -168,7 +168,8 @@ With **Save each enabled extra track as MP3** on (Backup tab):
 | What | Where | Timing |
 |---|---|---|
 | Full recordings | `<Recording Path>\Extra Audio\Main\` and `...\Extra Audio\Vertical\` | One MP3 per enabled track, following that recording's own start, stop and pauses. Encoded live from the captured audio. |
-| Replay Buffer and Backtrack clips | `<Recording Path>\Extra Audio\` | One MP3 per enabled track, made when the clip is saved, converted from the AAC in RAM. |
+| Replay Buffer clips | `<Recording Path>\Extra Audio\Replay Buffer\` | One MP3 per enabled track, made when the clip is saved, converted from the AAC in RAM. |
+| Aitum Backtrack clips | `<Recording Path>\Extra Audio\Vertical Backtrack\` | The same, for each Backtrack clip. |
 
 **Each recording gets its own set.** When the main and the Aitum vertical canvas both record, you get two sets of MP3s, one in `Main\` and one in `Vertical\`: with 7 enabled tracks, that's 14 files, about 1 GB per hour at 160 kbps. Each set matches its own video exactly: the vertical recording starts a moment later, and either canvas can pause, stop or restart on its own. So each MP3 drops straight onto its own video's timeline in an editor. Without Aitum there is only the main set.
 
@@ -181,7 +182,7 @@ With **Save each enabled extra track as MP3** on (Backup tab):
 | `{recording}` | the recording's own filename, without `.mp4` |
 | `%CCYY-%MM-%DD`, `%hh-%mm-%ss`, … | OBS date and time tokens, taken from the recording's start |
 
-With the default pattern, `2026-10-15_MASTER_07-00-00.mp4` gives `2026-10-15_MASTER_07-00-00_Track 7 - Microphone.mp3`. The recording comes first, so each session's files sort together. A track with no name gives `2026-10-15_MASTER_07-00-00_Track 7.mp3`: the ` - ` next to an empty name is left out. The Backup tab shows an example built the same way as the real files, so you can see the effect of a pattern before you save it.
+With the default pattern, a recording named `2026-10-15 07-00-00.mp4` (OBS's default naming) gives `2026-10-15 07-00-00_Track 7 - Microphone.mp3`. The recording comes first, so each session's files sort together. A track with no name gives `2026-10-15 07-00-00_Track 7.mp3`: the ` - ` next to an empty name is left out. The Backup tab shows an example built the same way as the real files, so you can see the effect of a pattern before you save it.
 
 **How files are named and written**:
 
@@ -272,7 +273,7 @@ Measured on the development setup.
 | Not yet tested with Aitum Vertical X… | Your Aitum is newer than the version this plugin was tested with. Vertical recording works as usual; if something looks wrong, go back to the tested Aitum or update the plugin. |
 | Not yet tested with OBS X… | Your OBS is newer than the version this plugin was tested with. Recording works as usual; if something looks wrong, go back to the tested OBS or update the plugin. |
 | …pauses in the extra tracks are placed from OBS's video clock… | This OBS stores its pause position differently, so pauses are placed from the video clock: usually exact, at most a frame or two off. |
-| Complete: extra tracks are embedded… | The last recording finished. |
+| Main OBS: Complete: extra tracks are embedded… (and "Aitum: …" for vertical) | That recording finished. Each canvas shows its last recording until it records again. |
 | Extra audio was not added. Original MP4 restored; captured audio retained for retry. | Embedding failed safely; see below. |
 | Stop OBS/Aitum outputs before saving track changes. | Habit 5. |
 

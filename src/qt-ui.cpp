@@ -204,8 +204,12 @@ extern "C" void ea_qt_open(void *)
 	auto *tracksTab = new QWidget(tabs); tracksTab->setObjectName(QStringLiteral("EATracksTab"));
 	auto *tracksLayout = new QVBoxLayout(tracksTab); tabs->addTab(tracksTab, T("Panel.TracksTab"));
 	tabs->setTabToolTip(0, T("Panel.TracksTab.Tooltip"));
-	auto *roles = new QLabel(T("Panel.Roles")
-		.arg(initial["live"].toInt(1)).arg(initial["vod"].toInt(2)), tracksTab); tracksLayout->addWidget(roles);
+	// The VOD gets its own track only while OBS's Twitch VOD track option uses one.
+	auto rolesText = [](int live, int vod, bool vodUsed) {
+		return vodUsed ? T("Panel.Roles").arg(live).arg(vod) : T("Panel.RolesVodOff").arg(live);
+	};
+	auto *roles = new QLabel(rolesText(initial["live"].toInt(1), initial["vod"].toInt(2), initial["vod_used"].toBool()), tracksTab);
+	tracksLayout->addWidget(roles);
 	roles->setObjectName(QStringLiteral("EAOutputRoles"));
 	roles->setToolTip(T("Panel.Roles.Tooltip"));
 	auto *encoderLabel = new QLabel(T("Panel.Encoder").arg(initial["encoder"].toString()), tracksTab);
@@ -326,10 +330,9 @@ extern "C" void ea_qt_open(void *)
 	};
 	// Only read applied OBS settings. Refresh labels without reloading the track draft
 	// or changing checkbox states, names, bitrates, or source assignments.
-	auto refreshRoles = [roles, encoderLabel] {
+	auto refreshRoles = [roles, encoderLabel, rolesText] {
 		struct ea_ui_roles selected{}; if (!ea_ui_read_roles(&selected)) return;
-		const auto summary = T("Panel.Roles")
-			.arg(selected.live).arg(selected.vod);
+		const auto summary = rolesText(int(selected.live), int(selected.vod), selected.vod_used);
 		if (roles->text() != summary) roles->setText(summary);
 		const auto encoder = T("Panel.Encoder").arg(QString::fromUtf8(selected.encoder));
 		if (encoderLabel->text() != encoder) encoderLabel->setText(encoder);

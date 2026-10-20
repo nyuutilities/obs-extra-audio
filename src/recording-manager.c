@@ -47,6 +47,8 @@ static struct recording_job jobs[EA_JOBS];
 static UINT_PTR timer;
 static char helper[8192];
 static char manager_state[1024] = "Extra source recording is disabled.";
+// The last finished recording on each canvas (main, vertical), until that canvas records again.
+static char finished[2][8800];
 static bool reload_pending;
 static uint64_t loaded_config_hash;
 static bool aitum_supported, aitum_tested;
@@ -463,6 +465,7 @@ static void start_job(obs_output_t *output)
 	InitializeCriticalSection(&job->clock_mutex);
 	job->wake = CreateEventW(NULL, FALSE, FALSE, NULL);
 	job->output = obs_output_get_ref(output); job->vertical = vertical; job->started = true;
+	finished[vertical][0] = 0;
     job->backup=backup;job->embedded_count=selected;
     obs_encoder_t *clock_encoder=obs_output_get_audio_encoder(output,0);
     job->native_frame_size=clock_encoder?(unsigned)obs_encoder_get_frame_size(clock_encoder):1024;
@@ -540,7 +543,7 @@ static VOID CALLBACK tick(HWND window, UINT message, UINT_PTR id, DWORD time)
 		if (!obs_output_active(job->output)) {
 			// Outputs can be recreated between sessions. Reclaim completed slots
 			// outside obs_enum_outputs, whose mutex also protects output removal.
-			snprintf(manager_state, sizeof(manager_state), "%s\n%s", job->state, job->final_path);
+			snprintf(finished[job->vertical], sizeof(finished[0]), "%s\n%s", job->state, job->final_path);
 			release_job(job);
 		} else {
 			obs_data_t *s = obs_output_get_settings(job->output);
@@ -720,6 +723,10 @@ void ea_record_manager_status(char *text, size_t size)
 			obs_data_release(settings);
 		}
 		obs_source_release(source);
+	}
+	for (unsigned v = 0; v < 2; ++v) if (*finished[v]) {
+		size_t used = strlen(text);
+		snprintf(text + used, size - used, "\n\n%s: %s", v ? obs_module_text("Status.JobVertical") : obs_module_text("Status.JobMain"), finished[v]);
 	}
 	for (unsigned i = 0; i < EA_JOBS; ++i) if (jobs[i].output) {
 		size_t used = strlen(text);
