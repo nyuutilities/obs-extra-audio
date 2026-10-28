@@ -1,7 +1,7 @@
 {
   "display_name": "OBS Extra Audio",
   "id": "obs-extra-audio",
-  "version": "0.11.15",
+  "version": "0.11.16",
   "os_arch": "windows-x64",
   "name": "obs-extra-audio",
   "description": "Extra audio tracks in OBS/Aitum recordings and Replay Buffer/Backtrack clips, with optional MP3 contingency.",

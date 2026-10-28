@@ -35,6 +35,11 @@
 // still holds that first packet; its clip needs audio from there.
 #define LEAD_FRAMES (4 * AUDIO_OUTPUT_FRAMES)
 #define MIN_RETENTION 10u
+// The lane logs when the audio it feeds is this far behind capture, and again
+// once it is back within LAG_CLEAR_NS; at most LAG_NOTES warnings per lane.
+#define LAG_WARN_NS 2000000000LL
+#define LAG_CLEAR_NS 1000000000LL
+#define LAG_NOTES 50u
 
 struct span { int64_t start, end, origin; };
 struct ea_lane;
@@ -126,8 +131,10 @@ static unsigned cursor_at(int64_t time, struct ea_stem_block *block, int64_t blo
 static DWORD WINAPI lane_thread(void *data)
 {
 	struct ea_lane *lane = data;
-	SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_BELOW_NORMAL);
-	unsigned rate = L.rate, epoch = 0, cursor = 0;
+	// Normal priority: under load a below-normal thread can wait seconds for the CPU.
+	unsigned rate = L.rate, epoch = 0, cursor = 0, lag_notes = 0;
+	int64_t lag_peak = 0;
+	uint64_t lag_since = 0;
 	const int64_t block_ns = (int64_t)audio_frames_to_ns(rate, AUDIO_OUTPUT_FRAMES);
 	int64_t written_until = INT64_MIN;
 	uint64_t overruns = ea_source_recorder_overruns(L.source);
@@ -167,7 +174,7 @@ static DWORD WINAPI lane_thread(void *data)
 		if (!anchored) { WaitForSingleObject(lane->wake, 50); continue; }
 		if (current != epoch) {
 			epoch = current; cursor = cursor_at(start, block, block_ns);
-			written_until = INT64_MIN; overruns = ea_source_recorder_overruns(L.source);
+			written_until = INT64_MIN; overruns = ea_source_recorder_overruns(L.source); lag_since = 0;
 		}
 		unsigned end = ea_source_recorder_write_pos(L.source);
 		if (end - cursor >= EA_HISTORY || ea_source_recorder_overruns(L.source) != overruns) {
@@ -198,6 +205,22 @@ static DWORD WINAPI lane_thread(void *data)
 		bool paused = lane->paused;
 		int64_t safe_end = paused ? lane->pause_start : lane->last_ns + lane->frame_ns;
 		LeaveCriticalSection(&lane->mutex);
+		if (!closing && !paused) {
+			// How far this block is behind capture: the native packets it waits
+			// for are held back, or the encoders are still catching up.
+			uint64_t now = os_gettime_ns();
+			int64_t behind = (int64_t)now - ((int64_t)block->timestamp + block_ns);
+			if (lag_since && behind > lag_peak) lag_peak = behind;
+			if (!lag_since && behind > LAG_WARN_NS && lag_notes < LAG_NOTES) {
+				lag_since = now; lag_peak = behind;
+				blog(LOG_WARNING, "[extra-audio] %s extra tracks are %.1f s behind the native audio; they catch up when it arrives%s",
+					side(lane), behind / 1e9, ++lag_notes == LAG_NOTES ? " (later delays are not logged)" : "");
+			} else if (lag_since && behind < LAG_CLEAR_NS) {
+				blog(LOG_INFO, "[extra-audio] %s extra tracks caught up after %.1f s (at most %.1f s behind)",
+					side(lane), (now - lag_since) / 1e9, lag_peak / 1e9);
+				lag_since = 0;
+			}
+		}
 		// Encoded packets can lag the exact pause boundary by several frames.
 		// Keep input up to that boundary before discarding paused time.
 		if (!closing && !paused && (int64_t)block->timestamp + block_ns > safe_end) { WaitForSingleObject(lane->wake, 50); continue; }
@@ -466,6 +489,22 @@ struct ea_aac_recorder *ea_lane_audio(struct ea_lane_user *user) { return user->
 int64_t ea_lane_position(struct ea_lane_user *user) { return atomic_load(&user->lane->position); }
 void ea_lane_retain(struct ea_lane_user *user, unsigned seconds) { user->retention = seconds; }
 bool ea_lane_failed(struct ea_lane_user *user) { return atomic_load(&user->lane->failed) || ea_aac_failed(user->lane->audio); }
+
+bool ea_lane_wait_ready(struct ea_lane_user *user, int64_t frame)
+{
+	struct ea_aac_recorder *audio = ea_lane_audio(user);
+	DWORD began = GetTickCount(), moved = began;
+	int64_t seen = ea_aac_replay_ready(audio);
+	while (seen < frame) {
+		DWORD now = GetTickCount();
+		if (seen < 0 || ea_lane_failed(user) || now - moved > 5000 || now - began > 60000) return false;
+		ea_aac_wait_progress(audio, 50);
+		int64_t ready = ea_aac_replay_ready(audio);
+		if (ready > seen) { seen = ready; moved = GetTickCount(); }
+		else if (ready < 0) seen = ready;
+	}
+	return true;
+}
 
 void ea_lane_pause(obs_encoder_t *encoder)
 {

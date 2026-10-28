@@ -364,9 +364,7 @@ static DWORD WINAPI write_stems(void *data)
         if(!atomic_load(&job->failed)) {
             // The shared encoders finish this output's audio while other
             // outputs keep them running, or as they flush after the last stops.
-            struct ea_aac_recorder *audio=ea_lane_audio(job->lane);DWORD began=GetTickCount();
-            while(ea_aac_replay_ready(audio)<offset+final_frames && !ea_lane_failed(job->lane) && GetTickCount()-began<5000)ea_aac_wait_progress(audio,50);
-            complete=ea_aac_replay_ready(audio)>=offset+final_frames;
+            complete=ea_lane_wait_ready(job->lane,offset+final_frames);
             if(!complete)blog(LOG_ERROR,"[extra-audio] Shared extra-track encoders did not finish this recording's timeline: %s",job->native_path);
         }
         if(!ea_aac_tee_finish(tee,complete?final_frames:0) || !complete)job->aac_failed=true;

@@ -16,6 +16,8 @@
 #define GROUPS 2u
 #define TEE_BATCH 64u
 #define PACKET_LIMIT (256ULL*1024*1024)
+// An encoder clock waiting for a block rechecks for closing at least this often.
+#define PULL_WAIT_MS 500u
 struct ea_aac_recorder;
 struct aac_track {
     obs_encoder_t *encoder;
@@ -37,6 +39,7 @@ struct encoder_group {
     obs_output_t *sink;
     unsigned first, count;
     atomic_uint read;
+    HANDLE filled; // Signalled when a block is queued, or when closing.
 };
 struct ea_aac_recorder {
     AVFormatContext *output; // Holds the stream parameters; never written.
@@ -54,7 +57,7 @@ struct ea_aac_recorder {
     // Signalled when an encoder group takes a block, a packet arrives, or a
     // sink output finishes stopping, so waiting threads never poll.
     HANDLE room, progress, stopped;
-    atomic_bool failed;
+    atomic_bool failed, closing;
     bool limit_logged;
     unsigned retention_seconds;
     uint64_t replay_bytes;
@@ -76,6 +79,16 @@ static bool pull(void *opaque,uint64_t start,uint64_t end,uint64_t *timestamp,ui
     (void)start;(void)end;
     struct encoder_group *g=opaque; struct ea_aac_recorder *w=g->owner;
     unsigned read=atomic_load(&g->read), write=atomic_load_explicit(&w->write,memory_order_acquire);
+    // OBS calls this once per turn of the clock and never repeats a turn that
+    // returns nothing, so every empty return would leave the encoders behind
+    // for good. Waiting for the next block lets the clock fall behind instead;
+    // OBS then runs the late turns back to back and the encoders catch up.
+    // Only this private clock waits. Closing wakes it, and block timestamps
+    // come from the block count, so nothing moves in time.
+    while(active && read==write && !atomic_load(&w->closing) && !atomic_load(&w->failed)) {
+        WaitForSingleObject(g->filled,PULL_WAIT_MS);
+        write=atomic_load_explicit(&w->write,memory_order_acquire);
+    }
     if(!active || read==write || atomic_load(&w->failed)) return false;
     const float *block=atomic_load_explicit(&w->queue,memory_order_acquire)+(size_t)(read%QUEUE_BLOCKS)*w->block_floats;
     *timestamp=1000000000ULL+audio_frames_to_ns(w->rate,(uint64_t)read*AUDIO_OUTPUT_FRAMES);
@@ -146,7 +159,7 @@ struct ea_aac_recorder *ea_aac_open(unsigned rate,const struct ea_extra_track *t
     bool vertical,bool backup_all,const char *encoder_id,obs_data_t *encoder_settings,unsigned seconds)
 {
     struct ea_aac_recorder *w=av_mallocz(sizeof(*w)); if(!w) return NULL;
-    InitializeCriticalSection(&w->mutex); atomic_init(&w->failed,false);atomic_init(&w->write,0);atomic_init(&w->queue,NULL);
+    InitializeCriticalSection(&w->mutex); atomic_init(&w->failed,false);atomic_init(&w->closing,false);atomic_init(&w->write,0);atomic_init(&w->queue,NULL);
     w->room=CreateEventW(NULL,FALSE,FALSE,NULL);w->progress=CreateEventW(NULL,FALSE,FALSE,NULL);w->stopped=CreateEventW(NULL,FALSE,FALSE,NULL);
     if(!w->room || !w->progress || !w->stopped) goto fail;
     w->rate=rate; w->retention_seconds=seconds?seconds:30;
@@ -164,6 +177,7 @@ struct ea_aac_recorder *ea_aac_open(unsigned rate,const struct ea_extra_track *t
         struct encoder_group *g=&w->groups[i];g->owner=w;g->first=i*MAX_AUDIO_MIXES;g->count=w->count-g->first;
         if(g->count>MAX_AUDIO_MIXES) g->count=MAX_AUDIO_MIXES;
         atomic_init(&g->read,0);
+        g->filled=CreateEventW(NULL,FALSE,FALSE,NULL);if(!g->filled) goto fail;
         struct audio_output_info ai={.name="Extra Audio recording clock",.samples_per_sec=rate,.format=AUDIO_FORMAT_FLOAT_PLANAR,
             .speakers=SPEAKERS_STEREO,.input_callback=pull,.input_param=g};
         if(audio_output_open(&g->audio,&ai)!=AUDIO_OUTPUT_SUCCESS) goto fail;
@@ -409,7 +423,9 @@ static bool enqueue(struct ea_aac_recorder *w)
     }
     float *slot=queue+(size_t)(write%QUEUE_BLOCKS)*w->block_floats;
     for(unsigned i=0;i<w->count;++i) memcpy(slot+(size_t)i*2*AUDIO_OUTPUT_FRAMES,w->pending[i],sizeof(w->pending[i]));
-    atomic_store_explicit(&w->write,write+1,memory_order_release);w->buffered=0;return !atomic_load(&w->failed);
+    atomic_store_explicit(&w->write,write+1,memory_order_release);w->buffered=0;
+    for(unsigned i=0;i<w->group_count;++i)SetEvent(w->groups[i].filled);
+    return !atomic_load(&w->failed);
 }
 bool ea_aac_release_queue(struct ea_aac_recorder *w)
 {
@@ -444,6 +460,9 @@ bool ea_aac_silence_to(struct ea_aac_recorder *w,int64_t frame)
 bool ea_aac_close(struct ea_aac_recorder *w)
 {
     if(!w)return false;
+    // Encoder clocks stop waiting for blocks, so stopping and closing them never waits on a turn.
+    atomic_store(&w->closing,true);
+    for(unsigned i=0;i<GROUPS;++i)if(w->groups[i].filled)SetEvent(w->groups[i].filled);
     for(unsigned i=0;i<w->group_count;++i) {
         struct encoder_group *g=&w->groups[i];
         if(g->sink && obs_output_active(g->sink)) {
@@ -461,6 +480,7 @@ bool ea_aac_close(struct ea_aac_recorder *w)
     }
     bool ok=!atomic_load(&w->failed);obs_data_release(w->encoder_settings);avformat_free_context(w->output);av_free(atomic_load(&w->queue));DeleteCriticalSection(&w->mutex);
     if(w->room)CloseHandle(w->room);if(w->progress)CloseHandle(w->progress);if(w->stopped)CloseHandle(w->stopped);
+    for(unsigned i=0;i<GROUPS;++i)if(w->groups[i].filled)CloseHandle(w->groups[i].filled);
     av_free(w);return ok;
 }
 void ea_aac_wait_progress(struct ea_aac_recorder *w,unsigned milliseconds) { WaitForSingleObject(w->progress,milliseconds); }

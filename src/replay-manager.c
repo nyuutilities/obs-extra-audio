@@ -170,10 +170,7 @@ static DWORD WINAPI export_clip(void *data)
     if(os_file_exists(clip->audio) || os_file_exists(clip->job))goto fail;
     unsigned rate=ea_source_recorder_rate(r.source);int64_t frames,start=clip->window.start_frame;
     if(!ea_recording_audio_frames(clip->native,rate,&frames))goto fail;
-    DWORD began=GetTickCount();
-    while(ea_aac_replay_ready(audio)<start+frames) {
-        if(ea_lane_failed(w->user) || GetTickCount()-began>5000)goto fail;ea_aac_wait_progress(audio,50);
-    }
+    if(!ea_lane_wait_ready(w->user,start+frames))goto fail;
     if(r.config.backup_mp3) {
         char backup[8192];snprintf(backup,sizeof(backup),"%s.extra-audio-backup.m4a",clip->native);
         // Each clip output has its own folder beside the recordings' Main and Vertical.

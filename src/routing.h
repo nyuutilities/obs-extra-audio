@@ -2,7 +2,7 @@
 #pragma once
 #include <obs.h>
 
-#define EA_VERSION "0.11.15"
+#define EA_VERSION "0.11.16"
 
 // The OBS and Aitum Vertical versions this build was made and tested with. Older versions are
 // refused (OBS) or get no vertical extra tracks (Aitum), because the build may rely on what they

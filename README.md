@@ -1,4 +1,4 @@
-# OBS Extra Audio 0.11.15
+# OBS Extra Audio 0.11.16
 
 OBS Extra Audio adds up to ten extra audio tracks, numbered **7–16**, to your OBS recordings and replay clips. Each extra track is its own mix of the sources you choose (for example only your microphone, or only Discord). It's saved as a separate, named stereo AAC stream inside the original MP4, so an editor can mute or process each one on its own.
 
@@ -230,6 +230,7 @@ These avoid every known problem. None of them risks your native recording; at wo
 - **Two bugs in Aitum 1.6.6 itself,** both reproduced with this plugin removed:
   - a vertical recording running during a scene collection switch gets stuck (habit 3);
   - its WebSocket "unpause recording" request leaks one object at OBS exit when the recording isn't paused. This matters only to automation, such as a Stream Deck or Streamer.bot, that sends that request.
+- **A long video encoder stall stops that canvas's extra tracks.** Extra tracks wait for the recording's own audio, which OBS holds back while that canvas's video encoder catches up. They catch up after short hold-ups, but one longer than about 10 seconds stops that canvas's extra tracks for the rest of the session (the log says "capture history overrun"). The MP3 backups keep recording.
 - **MP4 (including Hybrid MP4) only.** A clip in another format keeps its extra audio in a companion `.extra-audio.m4a` instead of being embedded.
 - **Stereo only.** At most 10 extra tracks (7–16) and 32 assigned sources.
 - **No recording file splitting** (habit 1).
@@ -271,7 +272,7 @@ Measured on the development setup.
 | Extra audio was not added. Original MP4 restored; captured audio retained for retry. | Embedding failed safely; see below. |
 | Stop OBS/Aitum outputs before saving track changes. | Habit 5. |
 
-**Logs**: lines starting with `[extra-audio]` in the OBS log (Help > Log Files) say exactly what happened, including timing problems and failed embeds.
+**Logs**: lines starting with `[extra-audio]` in the OBS log (Help > Log Files) say exactly what happened, including timing problems and failed embeds. If a canvas's video encoder falls behind, the log says how far behind its extra tracks are, and when they've caught up.
 
 **Retrying a failed embed**: keep the MP4 and its `.extra-audio.m4a` and `.extra-audio-job.json` files. With OBS closed, run from OBS's `bin\64bit` folder:
 

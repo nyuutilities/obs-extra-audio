@@ -34,6 +34,9 @@ int64_t ea_lane_position(struct ea_lane_user *user);
 // Seconds of encoded audio this user needs kept in RAM.
 void ea_lane_retain(struct ea_lane_user *user, unsigned seconds);
 bool ea_lane_failed(struct ea_lane_user *user);
+// Waits until the encoders have encoded up to `frame`, for as long as they keep
+// advancing: false after 5 s without progress, 60 s in all, or a failure.
+bool ea_lane_wait_ready(struct ea_lane_user *user, int64_t frame);
 // From the pause and unpause signals of any pausable output.
 void ea_lane_pause(obs_encoder_t *encoder);
 void ea_lane_unpause(obs_encoder_t *encoder);
